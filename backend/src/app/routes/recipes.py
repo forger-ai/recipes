@@ -124,7 +124,7 @@ def _replace_children(session: Session, recipe: Recipe, payload: RecipeWrite) ->
             if existing:
                 ingredient_id = existing.id
             else:
-                ingredient = Ingredient(name=item.name.strip(), default_unit=item.unit)
+                ingredient = Ingredient(name=item.name.strip())
                 session.add(ingredient)
                 session.flush()
                 ingredient_id = ingredient.id

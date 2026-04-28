@@ -42,7 +42,9 @@ La vista principal de recetas funciona como un libro: muestra el listado, permit
 
 El usuario puede mantener un catalogo local de ingredientes.
 
-Cada ingrediente puede tener una unidad por defecto y un precio observado. El precio observado sirve para estimar costos de recetas cuando la unidad del ingrediente en la receta coincide con la unidad del precio registrado.
+Cada ingrediente del catalogo es una entidad simple con nombre y notas. No debe guardar unidad, precio ni referencia de precio directamente.
+
+Los precios observados pertenecen al modelo separado `IngredientPrice`, que guarda precio, cantidad, unidad, fuente/referencia y fecha. El precio observado sirve para estimar costos de recetas cuando la unidad del ingrediente en la receta coincide con la unidad del precio registrado.
 
 El costo es una estimacion local. No representa precios en tiempo real ni garantiza exactitud.
 
@@ -54,7 +56,7 @@ El usuario puede crear, editar y eliminar categorias desde una vista propia. Las
 
 ### Armar menu semanal
 
-El usuario puede distribuir varias recetas por dia en una vista semanal simple y reordenarlas con drag and drop dentro del mismo dia.
+El usuario puede distribuir varias recetas por dia en una vista semanal simple y reordenarlas con drag and drop dentro del mismo dia o moverlas entre dias.
 
 ### Organizar y revisar
 

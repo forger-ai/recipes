@@ -28,9 +28,7 @@ def test_recipe_crud_with_costs() -> None:
     category = client.post(
         "/api/categories", json={"name": "Cena", "color": "#48624c"}
     ).json()
-    ingredient = client.post(
-        "/api/ingredients", json={"name": "Tomate", "default_unit": "kg"}
-    ).json()
+    ingredient = client.post("/api/ingredients", json={"name": "Tomate"}).json()
     client.post(
         f"/api/ingredients/{ingredient['id']}/prices",
         json={"price": 1200, "quantity": 1, "unit": "kg", "source": "feria"},
@@ -88,7 +86,7 @@ def test_recipe_creates_missing_catalog_ingredient_and_weekly_menu() -> None:
     assert created.status_code == 200
     ingredients = client.get("/api/ingredients").json()
     assert ingredients[0]["name"] == "Lechuga"
-    assert ingredients[0]["default_unit"] == "g"
+    assert "default_unit" not in ingredients[0]
 
     plan = client.put(
         "/api/meal-plan",
@@ -109,9 +107,7 @@ def test_delete_category_and_ingredient_keep_recipe_readable() -> None:
     category = client.post(
         "/api/categories", json={"name": "Almuerzo", "color": "#b75d46"}
     ).json()
-    ingredient = client.post(
-        "/api/ingredients", json={"name": "Arroz", "default_unit": "g"}
-    ).json()
+    ingredient = client.post("/api/ingredients", json={"name": "Arroz"}).json()
     recipe = client.post(
         "/api/recipes",
         json={

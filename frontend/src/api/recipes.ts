@@ -28,7 +28,7 @@ export type Category = {
   color: string;
 };
 
-export type PriceObservation = {
+export type IngredientPrice = {
   id: string;
   ingredient_id: string;
   price: number;
@@ -41,9 +41,7 @@ export type PriceObservation = {
 export type Ingredient = {
   id: string;
   name: string;
-  default_unit?: RecipeUnit | null;
   notes?: string | null;
-  latest_price?: PriceObservation | null;
 };
 
 export type RecipeIngredient = {
@@ -169,7 +167,6 @@ export function listIngredients() {
 
 export function createIngredient(payload: {
   name: string;
-  default_unit?: RecipeUnit | null;
   notes?: string | null;
 }) {
   return post<Ingredient>("/api/ingredients", payload);
@@ -177,7 +174,7 @@ export function createIngredient(payload: {
 
 export function updateIngredient(
   id: string,
-  payload: { name: string; default_unit?: RecipeUnit | null; notes?: string | null },
+  payload: { name: string; notes?: string | null },
 ) {
   return request<Ingredient>(`/api/ingredients/${id}`, { method: "PUT", body: payload });
 }
@@ -190,7 +187,7 @@ export function addIngredientPrice(
   ingredientId: string,
   payload: { price: number; quantity: number; unit: RecipeUnit; source?: string | null },
 ) {
-  return post<PriceObservation>(`/api/ingredients/${ingredientId}/prices`, payload);
+  return post<IngredientPrice>(`/api/ingredients/${ingredientId}/prices`, payload);
 }
 
 export function listMealPlan() {

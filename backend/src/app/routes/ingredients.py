@@ -5,20 +5,20 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, select, update
 
 from app.database import get_session
-from app.models import Ingredient, IngredientPriceObservation, RecipeIngredient, utcnow
+from app.models import Ingredient, IngredientPrice, RecipeIngredient, utcnow
 from app.schemas import (
     IngredientBase,
+    IngredientPriceCreate,
+    IngredientPriceRead,
     IngredientRead,
-    PriceObservationCreate,
-    PriceObservationRead,
 )
-from app.services.pricing import cents_to_float, float_to_cents, latest_price
+from app.services.pricing import cents_to_float, float_to_cents
 
 router = APIRouter(prefix="/api/ingredients", tags=["ingredients"])
 
 
-def _price_read(price: IngredientPriceObservation) -> PriceObservationRead:
-    return PriceObservationRead(
+def _price_read(price: IngredientPrice) -> IngredientPriceRead:
+    return IngredientPriceRead(
         id=price.id,
         ingredient_id=price.ingredient_id,
         price=cents_to_float(price.price_cents),
@@ -29,21 +29,18 @@ def _price_read(price: IngredientPriceObservation) -> PriceObservationRead:
     )
 
 
-def _ingredient_read(session: Session, ingredient: Ingredient) -> IngredientRead:
-    price = latest_price(session, ingredient.id)
+def _ingredient_read(ingredient: Ingredient) -> IngredientRead:
     return IngredientRead(
         id=ingredient.id,
         name=ingredient.name,
-        default_unit=ingredient.default_unit,
         notes=ingredient.notes,
-        latest_price=_price_read(price) if price else None,
     )
 
 
 @router.get("", response_model=list[IngredientRead])
 def list_ingredients(session: Session = Depends(get_session)) -> list[IngredientRead]:
     ingredients = session.exec(select(Ingredient).order_by(Ingredient.name)).all()
-    return [_ingredient_read(session, ingredient) for ingredient in ingredients]
+    return [_ingredient_read(ingredient) for ingredient in ingredients]
 
 
 @router.post("", response_model=IngredientRead)
@@ -52,7 +49,6 @@ def create_ingredient(
 ) -> IngredientRead:
     ingredient = Ingredient(
         name=payload.name.strip(),
-        default_unit=payload.default_unit,
         notes=payload.notes,
     )
     session.add(ingredient)
@@ -62,7 +58,7 @@ def create_ingredient(
         session.rollback()
         raise HTTPException(status_code=409, detail="Ingredient already exists") from exc
     session.refresh(ingredient)
-    return _ingredient_read(session, ingredient)
+    return _ingredient_read(ingredient)
 
 
 @router.delete("/{ingredient_id}")
@@ -78,8 +74,8 @@ def delete_ingredient(
         .values(ingredient_id=None)
     )
     session.exec(
-        delete(IngredientPriceObservation).where(
-            IngredientPriceObservation.ingredient_id == ingredient_id
+        delete(IngredientPrice).where(
+            IngredientPrice.ingredient_id == ingredient_id
         )
     )
     session.delete(ingredient)
@@ -95,7 +91,6 @@ def update_ingredient(
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
     ingredient.name = payload.name.strip()
-    ingredient.default_unit = payload.default_unit
     ingredient.notes = payload.notes
     ingredient.updated_at = utcnow()
     session.add(ingredient)
@@ -105,19 +100,19 @@ def update_ingredient(
         session.rollback()
         raise HTTPException(status_code=409, detail="Ingredient already exists") from exc
     session.refresh(ingredient)
-    return _ingredient_read(session, ingredient)
+    return _ingredient_read(ingredient)
 
 
-@router.post("/{ingredient_id}/prices", response_model=PriceObservationRead)
+@router.post("/{ingredient_id}/prices", response_model=IngredientPriceRead)
 def add_price(
     ingredient_id: str,
-    payload: PriceObservationCreate,
+    payload: IngredientPriceCreate,
     session: Session = Depends(get_session),
-) -> PriceObservationRead:
+) -> IngredientPriceRead:
     ingredient = session.get(Ingredient, ingredient_id)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
-    price = IngredientPriceObservation(
+    price = IngredientPrice(
         ingredient_id=ingredient_id,
         price_cents=float_to_cents(payload.price),
         quantity=payload.quantity,

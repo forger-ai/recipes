@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from app.models import IngredientPriceObservation, RecipeIngredient
+from app.models import IngredientPrice, RecipeIngredient
 
 
 def cents_to_float(cents: int) -> float:
@@ -15,11 +15,11 @@ def float_to_cents(value: float) -> int:
 
 def latest_price(
     session: Session, ingredient_id: str
-) -> IngredientPriceObservation | None:
+) -> IngredientPrice | None:
     statement = (
-        select(IngredientPriceObservation)
-        .where(IngredientPriceObservation.ingredient_id == ingredient_id)
-        .order_by(IngredientPriceObservation.observed_at.desc())
+        select(IngredientPrice)
+        .where(IngredientPrice.ingredient_id == ingredient_id)
+        .order_by(IngredientPrice.observed_at.desc())
     )
     return session.exec(statement).first()
 

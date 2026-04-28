@@ -37,11 +37,10 @@ class CategoryRead(CategoryBase):
 
 class IngredientBase(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    default_unit: RecipeUnit | None = None
     notes: str | None = Field(default=None, max_length=500)
 
 
-class PriceObservationRead(BaseModel):
+class IngredientPriceRead(BaseModel):
     id: str
     ingredient_id: str
     price: float
@@ -53,10 +52,9 @@ class PriceObservationRead(BaseModel):
 
 class IngredientRead(IngredientBase):
     id: str
-    latest_price: PriceObservationRead | None = None
 
 
-class PriceObservationCreate(BaseModel):
+class IngredientPriceCreate(BaseModel):
     price: float = Field(ge=0)
     quantity: float = Field(default=1, gt=0)
     unit: RecipeUnit = "unit"

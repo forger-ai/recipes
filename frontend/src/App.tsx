@@ -34,7 +34,6 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  addIngredientPrice,
   Category,
   createCategory,
   createIngredient,
@@ -137,10 +136,7 @@ export default function App() {
   const [newCategory, setNewCategory] = useState("");
   const [newIngredient, setNewIngredient] = useState<{
     name: string;
-    default_unit: RecipeUnit;
-    price: string;
-    source: string;
-  }>({ name: "", default_unit: "unit", price: "", source: "" });
+  }>({ name: "" });
 
   const ingredientNames = useMemo(
     () => ingredients.map((ingredient) => ingredient.name),
@@ -276,26 +272,16 @@ export default function App() {
 
   async function addIngredientToCatalog() {
     if (!newIngredient.name.trim()) return;
-    const ingredient = await createIngredient({
+    await createIngredient({
       name: newIngredient.name.trim(),
-      default_unit: newIngredient.default_unit,
     });
-    if (newIngredient.price) {
-      await addIngredientPrice(ingredient.id, {
-        price: Number(newIngredient.price),
-        quantity: 1,
-        unit: newIngredient.default_unit,
-        source: newIngredient.source || null,
-      });
-    }
-    setNewIngredient({ name: "", default_unit: "unit", price: "", source: "" });
+    setNewIngredient({ name: "" });
     await loadAll();
   }
 
   async function saveIngredient(ingredient: Ingredient) {
     await updateIngredient(ingredient.id, {
       name: ingredient.name,
-      default_unit: ingredient.default_unit ?? "unit",
       notes: ingredient.notes ?? null,
     });
     await loadAll();
@@ -323,7 +309,7 @@ export default function App() {
           ingredient_id: ingredient?.id ?? null,
           name: ingredient?.name ?? "",
           quantity: 1,
-          unit: ingredient?.default_unit ?? "unit",
+          unit: "unit",
           note: "",
           position: current.ingredients.length,
         },
@@ -381,18 +367,22 @@ export default function App() {
     setMealPlan(await saveMealPlan(next));
   }
 
-  async function reorderMealPlanEntry(weekday: number, draggedId: string, targetId: string) {
+  async function reorderMealPlanEntry(
+    targetWeekday: number,
+    draggedId: string,
+    targetId: string | null,
+  ) {
     if (draggedId === targetId) return;
+    const movingEntry = mealPlan.find((entry) => entry.id === draggedId);
+    if (!movingEntry) return;
+
     const dayEntries = mealPlan
-      .filter((entry) => entry.weekday === weekday)
+      .filter((entry) => entry.weekday === targetWeekday && entry.id !== draggedId)
       .sort((a, b) => a.position - b.position);
-    const from = dayEntries.findIndex((entry) => entry.id === draggedId);
-    const to = dayEntries.findIndex((entry) => entry.id === targetId);
-    if (from < 0 || to < 0) return;
+    const to = targetId ? dayEntries.findIndex((entry) => entry.id === targetId) : dayEntries.length;
+    if (to < 0) return;
 
-    const [moved] = dayEntries.splice(from, 1);
-    dayEntries.splice(to, 0, moved);
-
+    dayEntries.splice(to, 0, { ...movingEntry, weekday: targetWeekday });
     const reorderedIds = new Set(dayEntries.map((entry) => entry.id));
     const nextEntries = [
       ...mealPlan.filter((entry) => !reorderedIds.has(entry.id)),
@@ -508,8 +498,8 @@ export default function App() {
                 mealPlan={mealPlan}
                 onAdd={(weekday, recipeId) => void addMealPlanRecipe(weekday, recipeId)}
                 onRemove={(id) => void removeMealPlanEntry(id)}
-                onReorder={(weekday, draggedId, targetId) =>
-                  void reorderMealPlanEntry(weekday, draggedId, targetId)
+                onReorder={(targetWeekday, draggedId, targetId) =>
+                  void reorderMealPlanEntry(targetWeekday, draggedId, targetId)
                 }
               />
             )}
@@ -874,7 +864,6 @@ function RecipeEditor(props: {
                     props.onUpdateIngredientLine(index, {
                       ingredient_id: match?.id ?? null,
                       name: value ?? "",
-                      unit: match?.default_unit ?? item.unit ?? "unit",
                     });
                   }}
                   onInputChange={(_event, value) => {
@@ -882,7 +871,6 @@ function RecipeEditor(props: {
                     props.onUpdateIngredientLine(index, {
                       ingredient_id: match?.id ?? null,
                       name: value,
-                      unit: match?.default_unit ?? item.unit ?? "unit",
                     });
                   }}
                   renderInput={(params) => (
@@ -1038,8 +1026,8 @@ function CategoryRow(props: {
 
 function IngredientsTab(props: {
   ingredients: Ingredient[];
-  newIngredient: { name: string; default_unit: RecipeUnit; price: string; source: string };
-  onNewIngredient: (value: { name: string; default_unit: RecipeUnit; price: string; source: string }) => void;
+  newIngredient: { name: string };
+  onNewIngredient: (value: { name: string }) => void;
   onAddIngredient: () => void;
   onSaveIngredient: (ingredient: Ingredient) => void;
   onDeleteIngredient: (ingredient: Ingredient) => void;
@@ -1049,20 +1037,6 @@ function IngredientsTab(props: {
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
           <TextField label="Ingrediente" value={props.newIngredient.name} onChange={(event) => props.onNewIngredient({ ...props.newIngredient, name: event.target.value })} sx={{ flex: 1 }} />
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel>Unidad</InputLabel>
-            <Select
-              label="Unidad"
-              value={props.newIngredient.default_unit}
-              onChange={(event) => props.onNewIngredient({ ...props.newIngredient, default_unit: event.target.value as RecipeUnit })}
-            >
-              {UNIT_OPTIONS.map((unit) => (
-                <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField label="Precio ref." type="number" value={props.newIngredient.price} onChange={(event) => props.onNewIngredient({ ...props.newIngredient, price: event.target.value })} />
-          <TextField label="Fuente" value={props.newIngredient.source} onChange={(event) => props.onNewIngredient({ ...props.newIngredient, source: event.target.value })} />
           <Button variant="contained" startIcon={<Add />} onClick={props.onAddIngredient}>Crear</Button>
         </Stack>
       </Paper>
@@ -1088,21 +1062,6 @@ function IngredientRow(props: {
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
         <TextField label="Nombre" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} sx={{ flex: 1 }} />
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Unidad</InputLabel>
-          <Select
-            label="Unidad"
-            value={draft.default_unit ?? "unit"}
-            onChange={(event) => setDraft({ ...draft, default_unit: event.target.value as RecipeUnit })}
-          >
-            {UNIT_OPTIONS.map((unit) => (
-              <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 180 }}>
-          Ref: {ingredientPriceLabel(draft)}
-        </Typography>
         <Button onClick={() => props.onSave(draft)}>Guardar</Button>
         <IconButton color="error" onClick={() => props.onDelete(draft)}>
           <DeleteOutline />
@@ -1112,17 +1071,12 @@ function IngredientRow(props: {
   );
 }
 
-function ingredientPriceLabel(ingredient: Ingredient) {
-  if (!ingredient.latest_price) return "Sin precio";
-  return `${money(ingredient.latest_price.price)} por ${ingredient.latest_price.quantity} ${ingredient.latest_price.unit}`;
-}
-
 function WeekTab(props: {
   recipes: RecipeSummary[];
   mealPlan: MealPlanEntry[];
   onAdd: (weekday: number, recipeId: string) => void;
   onRemove: (id: string) => void;
-  onReorder: (weekday: number, draggedId: string, targetId: string) => void;
+  onReorder: (targetWeekday: number, draggedId: string, targetId: string | null) => void;
 }) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
@@ -1132,18 +1086,16 @@ function WeekTab(props: {
     event.dataTransfer.setData("text/plain", id);
   }
 
-  function handleDragOver(event: DragEvent<HTMLElement>, weekday: number) {
-    const dragged = props.mealPlan.find((entry) => entry.id === draggedId);
-    if (dragged?.weekday !== weekday) return;
+  function handleDragOver(event: DragEvent<HTMLElement>) {
+    if (!draggedId) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
   }
 
-  function handleDrop(event: DragEvent<HTMLElement>, weekday: number, targetId: string) {
+  function handleDrop(event: DragEvent<HTMLElement>, weekday: number, targetId: string | null) {
     event.preventDefault();
     const id = draggedId ?? event.dataTransfer.getData("text/plain");
-    const dragged = props.mealPlan.find((entry) => entry.id === id);
-    if (!id || dragged?.weekday !== weekday) return;
+    if (!id) return;
     props.onReorder(weekday, id, targetId);
     setDraggedId(null);
   }
@@ -1151,7 +1103,13 @@ function WeekTab(props: {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(7, minmax(0, 1fr))" }, gap: 1.5 }}>
       {weekdays.map((day, weekday) => (
-        <Paper key={day} variant="outlined" sx={{ p: 1.5, minHeight: 260 }}>
+        <Paper
+          key={day}
+          variant="outlined"
+          onDragOver={handleDragOver}
+          onDrop={(event) => handleDrop(event, weekday, null)}
+          sx={{ p: 1.5, minHeight: 260 }}
+        >
           <Typography fontWeight={900} sx={{ mb: 1 }}>
             {day}
           </Typography>
@@ -1182,8 +1140,11 @@ function WeekTab(props: {
                   draggable
                   onDragStart={(event) => handleDragStart(event, entry.id)}
                   onDragEnd={() => setDraggedId(null)}
-                  onDragOver={(event) => handleDragOver(event, weekday)}
-                  onDrop={(event) => handleDrop(event, weekday, entry.id)}
+                  onDragOver={handleDragOver}
+                  onDrop={(event) => {
+                    event.stopPropagation();
+                    handleDrop(event, weekday, entry.id);
+                  }}
                   sx={{
                     p: 1,
                     bgcolor: "rgba(72, 98, 76, 0.06)",

@@ -21,13 +21,12 @@ class RecipeCategory(SQLModel, table=True):
 class Ingredient(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     name: str = Field(index=True, unique=True, min_length=1, max_length=120)
-    default_unit: str | None = Field(default=None, max_length=32)
     notes: str | None = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
 
 
-class IngredientPriceObservation(SQLModel, table=True):
+class IngredientPrice(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     ingredient_id: str = Field(foreign_key="ingredient.id", index=True)
     price_cents: int = Field(ge=0)
