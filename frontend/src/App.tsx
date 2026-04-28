@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type DragEvent, useEffect, useMemo, useState } from "react";
 import {
   Add,
   ArrowBack,
@@ -39,6 +39,8 @@ import {
   createCategory,
   createIngredient,
   createRecipe,
+  deleteCategory,
+  deleteIngredient,
   deleteRecipe,
   getRecipe,
   Ingredient,
@@ -106,6 +108,17 @@ function recipeToDraft(recipe: Recipe): Draft {
     ingredients: recipe.ingredients.map(({ id: _id, estimated_cost: _cost, ...item }) => item),
     steps: recipe.steps.map(({ id: _id, ...step }) => step),
   };
+}
+
+function normalizeMealPlan(
+  entries: { weekday: number; position: number; recipe_id: string; note?: string | null }[],
+) {
+  return weekdays.flatMap((_, weekday) =>
+    entries
+      .filter((entry) => entry.weekday === weekday)
+      .sort((a, b) => a.position - b.position)
+      .map((entry, position) => ({ ...entry, position })),
+  );
 }
 
 export default function App() {
@@ -248,6 +261,19 @@ export default function App() {
     await loadAll();
   }
 
+  async function removeCategory(category: Category) {
+    if (!window.confirm(`Eliminar la categoria "${category.name}"? Las recetas quedaran sin categoria.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await deleteCategory(category.id);
+      await loadAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar la categoria");
+    }
+  }
+
   async function addIngredientToCatalog() {
     if (!newIngredient.name.trim()) return;
     const ingredient = await createIngredient({
@@ -273,6 +299,19 @@ export default function App() {
       notes: ingredient.notes ?? null,
     });
     await loadAll();
+  }
+
+  async function removeIngredient(ingredient: Ingredient) {
+    if (!window.confirm(`Eliminar el ingrediente "${ingredient.name}" del catalogo?`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await deleteIngredient(ingredient.id);
+      await loadAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar el ingrediente");
+    }
   }
 
   function addIngredientLine(ingredient?: Ingredient) {
@@ -311,32 +350,62 @@ export default function App() {
   }
 
   async function addMealPlanRecipe(weekday: number, recipeId: string) {
-    const next = [
-      ...mealPlan.map(({ weekday, position, recipe_id, note }) => ({
+    const next = normalizeMealPlan([
+      ...mealPlan.map(({ weekday, recipe_id, note }) => ({
         weekday,
-        position,
+        position: 0,
         recipe_id,
         note,
       })),
       {
         weekday,
-        position: mealPlan.filter((entry) => entry.weekday === weekday).length,
+        position: 0,
         recipe_id: recipeId,
         note: null,
       },
-    ];
+    ]);
     setMealPlan(await saveMealPlan(next));
   }
 
   async function removeMealPlanEntry(id: string) {
-    const next = mealPlan
+    const next = normalizeMealPlan(
+      mealPlan
       .filter((entry) => entry.id !== id)
-      .map(({ weekday, position, recipe_id, note }) => ({
+      .map(({ weekday, recipe_id, note }) => ({
+        weekday,
+        position: 0,
+        recipe_id,
+          note,
+        })),
+    );
+    setMealPlan(await saveMealPlan(next));
+  }
+
+  async function reorderMealPlanEntry(weekday: number, draggedId: string, targetId: string) {
+    if (draggedId === targetId) return;
+    const dayEntries = mealPlan
+      .filter((entry) => entry.weekday === weekday)
+      .sort((a, b) => a.position - b.position);
+    const from = dayEntries.findIndex((entry) => entry.id === draggedId);
+    const to = dayEntries.findIndex((entry) => entry.id === targetId);
+    if (from < 0 || to < 0) return;
+
+    const [moved] = dayEntries.splice(from, 1);
+    dayEntries.splice(to, 0, moved);
+
+    const reorderedIds = new Set(dayEntries.map((entry) => entry.id));
+    const nextEntries = [
+      ...mealPlan.filter((entry) => !reorderedIds.has(entry.id)),
+      ...dayEntries.map((entry, position) => ({ ...entry, position })),
+    ];
+    const next = normalizeMealPlan(
+      nextEntries.map(({ weekday, position, recipe_id, note }) => ({
         weekday,
         position,
         recipe_id,
         note,
-      }));
+      })),
+    );
     setMealPlan(await saveMealPlan(next));
   }
 
@@ -420,6 +489,7 @@ export default function App() {
                 onNewCategory={setNewCategory}
                 onAddCategory={() => void addCategory()}
                 onSaveCategory={(category) => void saveCategory(category)}
+                onDeleteCategory={(category) => void removeCategory(category)}
               />
             )}
             {tab === "ingredients" && (
@@ -429,6 +499,7 @@ export default function App() {
                 onNewIngredient={setNewIngredient}
                 onAddIngredient={() => void addIngredientToCatalog()}
                 onSaveIngredient={(ingredient) => void saveIngredient(ingredient)}
+                onDeleteIngredient={(ingredient) => void removeIngredient(ingredient)}
               />
             )}
             {tab === "week" && (
@@ -437,6 +508,9 @@ export default function App() {
                 mealPlan={mealPlan}
                 onAdd={(weekday, recipeId) => void addMealPlanRecipe(weekday, recipeId)}
                 onRemove={(id) => void removeMealPlanEntry(id)}
+                onReorder={(weekday, draggedId, targetId) =>
+                  void reorderMealPlanEntry(weekday, draggedId, targetId)
+                }
               />
             )}
           </>
@@ -554,6 +628,7 @@ function RecipeDetail(props: {
   recipe: Recipe;
   onBack: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const totalMinutes = (props.recipe.prep_minutes ?? 0) + (props.recipe.cook_minutes ?? 0);
   return (
@@ -565,6 +640,9 @@ function RecipeDetail(props: {
         <Box sx={{ flex: 1 }} />
         <Button startIcon={<Edit />} variant="contained" onClick={props.onEdit}>
           Editar
+        </Button>
+        <Button color="error" startIcon={<DeleteOutline />} onClick={props.onDelete}>
+          Eliminar
         </Button>
       </Stack>
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
@@ -915,6 +993,7 @@ function CategoriesTab(props: {
   onNewCategory: (value: string) => void;
   onAddCategory: () => void;
   onSaveCategory: (category: Category) => void;
+  onDeleteCategory: (category: Category) => void;
 }) {
   return (
     <Stack spacing={2}>
@@ -925,13 +1004,22 @@ function CategoriesTab(props: {
         </Button>
       </Stack>
       {props.categories.map((category) => (
-        <CategoryRow key={category.id} category={category} onSave={props.onSaveCategory} />
+        <CategoryRow
+          key={category.id}
+          category={category}
+          onSave={props.onSaveCategory}
+          onDelete={props.onDeleteCategory}
+        />
       ))}
     </Stack>
   );
 }
 
-function CategoryRow(props: { category: Category; onSave: (category: Category) => void }) {
+function CategoryRow(props: {
+  category: Category;
+  onSave: (category: Category) => void;
+  onDelete: (category: Category) => void;
+}) {
   const [draft, setDraft] = useState(props.category);
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -940,6 +1028,9 @@ function CategoryRow(props: { category: Category; onSave: (category: Category) =
         <TextField label="Color" value={draft.color} onChange={(event) => setDraft({ ...draft, color: event.target.value })} sx={{ width: 140 }} />
         <Chip label={draft.name || "Categoria"} sx={{ bgcolor: draft.color, color: "#fff" }} />
         <Button onClick={() => props.onSave(draft)}>Guardar</Button>
+        <IconButton color="error" onClick={() => props.onDelete(draft)}>
+          <DeleteOutline />
+        </IconButton>
       </Stack>
     </Paper>
   );
@@ -951,6 +1042,7 @@ function IngredientsTab(props: {
   onNewIngredient: (value: { name: string; default_unit: RecipeUnit; price: string; source: string }) => void;
   onAddIngredient: () => void;
   onSaveIngredient: (ingredient: Ingredient) => void;
+  onDeleteIngredient: (ingredient: Ingredient) => void;
 }) {
   return (
     <Stack spacing={2}>
@@ -975,13 +1067,22 @@ function IngredientsTab(props: {
         </Stack>
       </Paper>
       {props.ingredients.map((ingredient) => (
-        <IngredientRow key={ingredient.id} ingredient={ingredient} onSave={props.onSaveIngredient} />
+        <IngredientRow
+          key={ingredient.id}
+          ingredient={ingredient}
+          onSave={props.onSaveIngredient}
+          onDelete={props.onDeleteIngredient}
+        />
       ))}
     </Stack>
   );
 }
 
-function IngredientRow(props: { ingredient: Ingredient; onSave: (ingredient: Ingredient) => void }) {
+function IngredientRow(props: {
+  ingredient: Ingredient;
+  onSave: (ingredient: Ingredient) => void;
+  onDelete: (ingredient: Ingredient) => void;
+}) {
   const [draft, setDraft] = useState(props.ingredient);
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -1003,6 +1104,9 @@ function IngredientRow(props: { ingredient: Ingredient; onSave: (ingredient: Ing
           Ref: {ingredientPriceLabel(draft)}
         </Typography>
         <Button onClick={() => props.onSave(draft)}>Guardar</Button>
+        <IconButton color="error" onClick={() => props.onDelete(draft)}>
+          <DeleteOutline />
+        </IconButton>
       </Stack>
     </Paper>
   );
@@ -1018,7 +1122,32 @@ function WeekTab(props: {
   mealPlan: MealPlanEntry[];
   onAdd: (weekday: number, recipeId: string) => void;
   onRemove: (id: string) => void;
+  onReorder: (weekday: number, draggedId: string, targetId: string) => void;
 }) {
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+
+  function handleDragStart(event: DragEvent<HTMLElement>, id: string) {
+    setDraggedId(id);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLElement>, weekday: number) {
+    const dragged = props.mealPlan.find((entry) => entry.id === draggedId);
+    if (dragged?.weekday !== weekday) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleDrop(event: DragEvent<HTMLElement>, weekday: number, targetId: string) {
+    event.preventDefault();
+    const id = draggedId ?? event.dataTransfer.getData("text/plain");
+    const dragged = props.mealPlan.find((entry) => entry.id === id);
+    if (!id || dragged?.weekday !== weekday) return;
+    props.onReorder(weekday, id, targetId);
+    setDraggedId(null);
+  }
+
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(7, minmax(0, 1fr))" }, gap: 1.5 }}>
       {weekdays.map((day, weekday) => (
@@ -1047,7 +1176,22 @@ function WeekTab(props: {
               .filter((entry) => entry.weekday === weekday)
               .sort((a, b) => a.position - b.position)
               .map((entry) => (
-                <Paper key={entry.id} variant="outlined" sx={{ p: 1, bgcolor: "rgba(72, 98, 76, 0.06)" }}>
+                <Paper
+                  key={entry.id}
+                  variant="outlined"
+                  draggable
+                  onDragStart={(event) => handleDragStart(event, entry.id)}
+                  onDragEnd={() => setDraggedId(null)}
+                  onDragOver={(event) => handleDragOver(event, weekday)}
+                  onDrop={(event) => handleDrop(event, weekday, entry.id)}
+                  sx={{
+                    p: 1,
+                    bgcolor: "rgba(72, 98, 76, 0.06)",
+                    cursor: "grab",
+                    opacity: draggedId === entry.id ? 0.55 : 1,
+                    "&:active": { cursor: "grabbing" },
+                  }}
+                >
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Box sx={{ flex: 1 }}>
                       <Typography fontWeight={800}>{entry.recipe.title}</Typography>

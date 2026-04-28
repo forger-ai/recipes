@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, select, update
 
 from app.database import get_session
-from app.models import Ingredient, IngredientPriceObservation, utcnow
+from app.models import Ingredient, IngredientPriceObservation, RecipeIngredient, utcnow
 from app.schemas import (
     IngredientBase,
     IngredientRead,
@@ -63,6 +63,28 @@ def create_ingredient(
         raise HTTPException(status_code=409, detail="Ingredient already exists") from exc
     session.refresh(ingredient)
     return _ingredient_read(session, ingredient)
+
+
+@router.delete("/{ingredient_id}")
+def delete_ingredient(
+    ingredient_id: str, session: Session = Depends(get_session)
+) -> dict[str, str]:
+    ingredient = session.get(Ingredient, ingredient_id)
+    if not ingredient:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    session.exec(
+        update(RecipeIngredient)
+        .where(RecipeIngredient.ingredient_id == ingredient_id)
+        .values(ingredient_id=None)
+    )
+    session.exec(
+        delete(IngredientPriceObservation).where(
+            IngredientPriceObservation.ingredient_id == ingredient_id
+        )
+    )
+    session.delete(ingredient)
+    session.commit()
+    return {"status": "deleted"}
 
 
 @router.put("/{ingredient_id}", response_model=IngredientRead)

@@ -50,11 +50,11 @@ Las unidades son un catalogo cerrado definido por la app. Al editar recetas, el 
 
 ### Administrar categorias
 
-El usuario puede crear y editar categorias desde una vista propia. Las categorias se usan para clasificar recetas.
+El usuario puede crear, editar y eliminar categorias desde una vista propia. Las categorias se usan para clasificar recetas. Al eliminar una categoria, las recetas asociadas quedan sin categoria.
 
 ### Armar menu semanal
 
-El usuario puede distribuir varias recetas por dia en una vista semanal simple.
+El usuario puede distribuir varias recetas por dia en una vista semanal simple y reordenarlas con drag and drop dentro del mismo dia.
 
 ### Organizar y revisar
 

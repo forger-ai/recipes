@@ -159,6 +159,10 @@ export function updateCategory(id: string, payload: { name: string; color: strin
   return request<Category>(`/api/categories/${id}`, { method: "PUT", body: payload });
 }
 
+export function deleteCategory(id: string) {
+  return del<{ status: string }>(`/api/categories/${id}`);
+}
+
 export function listIngredients() {
   return get<Ingredient[]>("/api/ingredients");
 }
@@ -176,6 +180,10 @@ export function updateIngredient(
   payload: { name: string; default_unit?: RecipeUnit | null; notes?: string | null },
 ) {
   return request<Ingredient>(`/api/ingredients/${id}`, { method: "PUT", body: payload });
+}
+
+export function deleteIngredient(id: string) {
+  return del<{ status: string }>(`/api/ingredients/${id}`);
 }
 
 export function addIngredientPrice(

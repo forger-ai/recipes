@@ -96,3 +96,47 @@ def test_recipe_creates_missing_catalog_ingredient_and_weekly_menu() -> None:
     )
     assert plan.status_code == 200
     assert plan.json()[0]["recipe"]["title"] == "Ensalada"
+
+    deleted = client.delete(f"/api/recipes/{created.json()['id']}")
+    assert deleted.status_code == 200
+    assert client.get("/api/meal-plan").json() == []
+
+
+def test_delete_category_and_ingredient_keep_recipe_readable() -> None:
+    reset_db()
+    client = TestClient(app)
+
+    category = client.post(
+        "/api/categories", json={"name": "Almuerzo", "color": "#b75d46"}
+    ).json()
+    ingredient = client.post(
+        "/api/ingredients", json={"name": "Arroz", "default_unit": "g"}
+    ).json()
+    recipe = client.post(
+        "/api/recipes",
+        json={
+            "title": "Arroz blanco",
+            "category_id": category["id"],
+            "servings": 2,
+            "ingredients": [
+                {
+                    "ingredient_id": ingredient["id"],
+                    "name": "Arroz",
+                    "quantity": 200,
+                    "unit": "g",
+                    "position": 0,
+                }
+            ],
+            "steps": [{"text": "Cocinar.", "position": 0}],
+        },
+    ).json()
+
+    assert client.delete(f"/api/categories/{category['id']}").status_code == 200
+    without_category = client.get(f"/api/recipes/{recipe['id']}").json()
+    assert without_category["category_id"] is None
+    assert without_category["category_name"] is None
+
+    assert client.delete(f"/api/ingredients/{ingredient['id']}").status_code == 200
+    without_ingredient = client.get(f"/api/recipes/{recipe['id']}").json()
+    assert without_ingredient["ingredients"][0]["name"] == "Arroz"
+    assert without_ingredient["ingredients"][0]["ingredient_id"] is None

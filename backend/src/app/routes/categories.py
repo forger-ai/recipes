@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, select, update
 
 from app.database import get_session
-from app.models import RecipeCategory, utcnow
+from app.models import Recipe, RecipeCategory, utcnow
 from app.schemas import CategoryBase, CategoryRead
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
@@ -29,6 +29,23 @@ def create_category(
         raise HTTPException(status_code=409, detail="Category already exists") from exc
     session.refresh(category)
     return category
+
+
+@router.delete("/{category_id}")
+def delete_category(
+    category_id: str, session: Session = Depends(get_session)
+) -> dict[str, str]:
+    category = session.get(RecipeCategory, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    session.exec(
+        update(Recipe)
+        .where(Recipe.category_id == category_id)
+        .values(category_id=None, updated_at=utcnow())
+    )
+    session.delete(category)
+    session.commit()
+    return {"status": "deleted"}
 
 
 @router.put("/{category_id}", response_model=CategoryRead)

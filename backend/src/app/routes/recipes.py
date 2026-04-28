@@ -4,7 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, delete, select
 
 from app.database import get_session
-from app.models import Ingredient, Recipe, RecipeCategory, RecipeIngredient, RecipeStep, utcnow
+from app.models import (
+    Ingredient,
+    MealPlanEntry,
+    Recipe,
+    RecipeCategory,
+    RecipeIngredient,
+    RecipeStep,
+    utcnow,
+)
 from app.schemas import (
     RecipeIngredientRead,
     RecipeRead,
@@ -224,6 +232,7 @@ def delete_recipe(recipe_id: str, session: Session = Depends(get_session)) -> di
         raise HTTPException(status_code=404, detail="Recipe not found")
     session.exec(delete(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe.id))
     session.exec(delete(RecipeStep).where(RecipeStep.recipe_id == recipe.id))
+    session.exec(delete(MealPlanEntry).where(MealPlanEntry.recipe_id == recipe.id))
     session.delete(recipe)
     session.commit()
     return {"status": "deleted"}
