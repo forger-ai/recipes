@@ -70,3 +70,13 @@ class RecipeStep(SQLModel, table=True):
     recipe_id: str = Field(foreign_key="recipe.id", index=True)
     position: int = Field(default=0, ge=0)
     text: str = Field(min_length=1, max_length=1200)
+
+
+class MealPlanEntry(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    weekday: int = Field(index=True, ge=0, le=6)
+    position: int = Field(default=0, ge=0)
+    recipe_id: str = Field(foreign_key="recipe.id", index=True)
+    note: str | None = Field(default=None, max_length=300)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)

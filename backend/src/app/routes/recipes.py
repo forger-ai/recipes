@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, delete, select
 
 from app.database import get_session
-from app.models import Recipe, RecipeCategory, RecipeIngredient, RecipeStep, utcnow
+from app.models import Ingredient, Recipe, RecipeCategory, RecipeIngredient, RecipeStep, utcnow
 from app.schemas import (
     RecipeIngredientRead,
     RecipeRead,
@@ -108,10 +108,22 @@ def _replace_children(session: Session, recipe: Recipe, payload: RecipeWrite) ->
     session.exec(delete(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe.id))
     session.exec(delete(RecipeStep).where(RecipeStep.recipe_id == recipe.id))
     for index, item in enumerate(payload.ingredients):
+        ingredient_id = item.ingredient_id
+        if not ingredient_id:
+            existing = session.exec(
+                select(Ingredient).where(Ingredient.name == item.name.strip())
+            ).first()
+            if existing:
+                ingredient_id = existing.id
+            else:
+                ingredient = Ingredient(name=item.name.strip(), default_unit=item.unit)
+                session.add(ingredient)
+                session.flush()
+                ingredient_id = ingredient.id
         session.add(
             RecipeIngredient(
                 recipe_id=recipe.id,
-                ingredient_id=item.ingredient_id,
+                ingredient_id=ingredient_id,
                 name=item.name.strip(),
                 quantity=item.quantity,
                 unit=item.unit,

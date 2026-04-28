@@ -12,7 +12,7 @@ Las skills y scripts son herramientas internas del agente. Pueden usarse para cu
 
 Recipes es una aplicacion local de recetas para una sola persona.
 
-Su objetivo es ayudar al usuario a mantener un recetario local con ingredientes estructurados, pasos ordenados, categorias, favoritas, notas personales, rating, referencias visuales y costos aproximados desde precios observados.
+Su objetivo es ayudar al usuario a mantener un recetario local con ingredientes estructurados, pasos ordenados, categorias, favoritas, notas personales, rating, referencias visuales, costos aproximados desde precios observados y un menu semanal simple.
 
 No es una red social, no es una plataforma de delivery, no es un planificador nutricional completo, no sincroniza datos en la nube y no busca precios en tiempo real.
 
@@ -36,6 +36,8 @@ Cada receta puede tener:
 - ingredientes estructurados;
 - pasos ordenados.
 
+La vista principal de recetas funciona como un libro: muestra el listado, permite abrir una receta en una vista de detalle y desde esa vista se puede editar.
+
 ### Gestionar ingredientes y precios observados
 
 El usuario puede mantener un catalogo local de ingredientes.
@@ -43,6 +45,16 @@ El usuario puede mantener un catalogo local de ingredientes.
 Cada ingrediente puede tener una unidad por defecto y un precio observado. El precio observado sirve para estimar costos de recetas cuando la unidad del ingrediente en la receta coincide con la unidad del precio registrado.
 
 El costo es una estimacion local. No representa precios en tiempo real ni garantiza exactitud.
+
+Las unidades son un catalogo cerrado definido por la app. Al editar recetas, el usuario puede elegir ingredientes existentes del catalogo o escribir uno nuevo. Si guarda una receta con un ingrediente nuevo, ese ingrediente debe quedar creado en el catalogo local.
+
+### Administrar categorias
+
+El usuario puede crear y editar categorias desde una vista propia. Las categorias se usan para clasificar recetas.
+
+### Armar menu semanal
+
+El usuario puede distribuir varias recetas por dia en una vista semanal simple.
 
 ### Organizar y revisar
 
@@ -60,7 +72,6 @@ No afirmes que Recipes soporta estas capacidades salvo que el usuario pida imple
 - OCR o lectura automatica de imagenes;
 - generacion garantizada de imagenes desde la app;
 - lista de compras automatica;
-- planificacion semanal de comidas;
 - nutricion avanzada o calculo calorico;
 - integraciones con supermercados.
 

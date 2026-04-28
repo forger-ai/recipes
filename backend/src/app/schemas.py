@@ -1,8 +1,29 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+RecipeUnit = Literal[
+    "unit",
+    "ml",
+    "l",
+    "litro",
+    "g",
+    "mg",
+    "kg",
+    "cucharada",
+    "cucharadita",
+    "cuchara",
+    "taza",
+    "pizca",
+    "onza",
+    "lb",
+    "paquete",
+    "lata",
+    "botella",
+]
 
 
 class CategoryBase(BaseModel):
@@ -16,7 +37,7 @@ class CategoryRead(CategoryBase):
 
 class IngredientBase(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    default_unit: str | None = Field(default=None, max_length=32)
+    default_unit: RecipeUnit | None = None
     notes: str | None = Field(default=None, max_length=500)
 
 
@@ -38,7 +59,7 @@ class IngredientRead(IngredientBase):
 class PriceObservationCreate(BaseModel):
     price: float = Field(ge=0)
     quantity: float = Field(default=1, gt=0)
-    unit: str = Field(default="unit", max_length=32)
+    unit: RecipeUnit = "unit"
     source: str | None = Field(default=None, max_length=160)
     observed_at: datetime | None = None
 
@@ -47,7 +68,7 @@ class RecipeIngredientWrite(BaseModel):
     ingredient_id: str | None = None
     name: str = Field(min_length=1, max_length=120)
     quantity: float | None = Field(default=None, gt=0)
-    unit: str | None = Field(default=None, max_length=32)
+    unit: RecipeUnit | None = None
     note: str | None = Field(default=None, max_length=300)
     position: int = Field(default=0, ge=0)
 
@@ -103,3 +124,15 @@ class RecipeRead(RecipeSummary):
     cook_minutes: int | None
     ingredients: list[RecipeIngredientRead]
     steps: list[RecipeStepRead]
+
+
+class MealPlanEntryWrite(BaseModel):
+    weekday: int = Field(ge=0, le=6)
+    position: int = Field(default=0, ge=0)
+    recipe_id: str
+    note: str | None = Field(default=None, max_length=300)
+
+
+class MealPlanEntryRead(MealPlanEntryWrite):
+    id: str
+    recipe: RecipeSummary

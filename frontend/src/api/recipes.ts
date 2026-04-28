@@ -1,5 +1,27 @@
 import { del, get, post, request } from "./client";
 
+export const UNIT_OPTIONS = [
+  "unit",
+  "ml",
+  "l",
+  "litro",
+  "g",
+  "mg",
+  "kg",
+  "cucharada",
+  "cucharadita",
+  "cuchara",
+  "taza",
+  "pizca",
+  "onza",
+  "lb",
+  "paquete",
+  "lata",
+  "botella",
+] as const;
+
+export type RecipeUnit = (typeof UNIT_OPTIONS)[number];
+
 export type Category = {
   id: string;
   name: string;
@@ -11,7 +33,7 @@ export type PriceObservation = {
   ingredient_id: string;
   price: number;
   quantity: number;
-  unit: string;
+  unit: RecipeUnit;
   source?: string | null;
   observed_at: string;
 };
@@ -19,7 +41,7 @@ export type PriceObservation = {
 export type Ingredient = {
   id: string;
   name: string;
-  default_unit?: string | null;
+  default_unit?: RecipeUnit | null;
   notes?: string | null;
   latest_price?: PriceObservation | null;
 };
@@ -29,7 +51,7 @@ export type RecipeIngredient = {
   ingredient_id?: string | null;
   name: string;
   quantity?: number | null;
-  unit?: string | null;
+  unit?: RecipeUnit | null;
   note?: string | null;
   position: number;
   estimated_cost?: number | null;
@@ -80,6 +102,22 @@ export type RecipePayload = {
   steps: Omit<RecipeStep, "id">[];
 };
 
+export type MealPlanEntry = {
+  id: string;
+  weekday: number;
+  position: number;
+  recipe_id: string;
+  note?: string | null;
+  recipe: RecipeSummary;
+};
+
+export type MealPlanEntryPayload = {
+  weekday: number;
+  position: number;
+  recipe_id: string;
+  note?: string | null;
+};
+
 export function listRecipes(params: {
   q?: string;
   favorite?: boolean;
@@ -117,21 +155,40 @@ export function createCategory(payload: { name: string; color: string }) {
   return post<Category>("/api/categories", payload);
 }
 
+export function updateCategory(id: string, payload: { name: string; color: string }) {
+  return request<Category>(`/api/categories/${id}`, { method: "PUT", body: payload });
+}
+
 export function listIngredients() {
   return get<Ingredient[]>("/api/ingredients");
 }
 
 export function createIngredient(payload: {
   name: string;
-  default_unit?: string | null;
+  default_unit?: RecipeUnit | null;
   notes?: string | null;
 }) {
   return post<Ingredient>("/api/ingredients", payload);
 }
 
+export function updateIngredient(
+  id: string,
+  payload: { name: string; default_unit?: RecipeUnit | null; notes?: string | null },
+) {
+  return request<Ingredient>(`/api/ingredients/${id}`, { method: "PUT", body: payload });
+}
+
 export function addIngredientPrice(
   ingredientId: string,
-  payload: { price: number; quantity: number; unit: string; source?: string | null },
+  payload: { price: number; quantity: number; unit: RecipeUnit; source?: string | null },
 ) {
   return post<PriceObservation>(`/api/ingredients/${ingredientId}/prices`, payload);
+}
+
+export function listMealPlan() {
+  return get<MealPlanEntry[]>("/api/meal-plan");
+}
+
+export function saveMealPlan(payload: MealPlanEntryPayload[]) {
+  return request<MealPlanEntry[]>("/api/meal-plan", { method: "PUT", body: payload });
 }

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from app.cors import allowed_origins
 from app.database_ext import init_app_db
 from app.health import router as health_router
-from app.routes import categories, ingredients, recipes
+from app.routes import categories, ingredients, meal_plan, recipes
 
 
 def create_app() -> FastAPI:
@@ -38,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api")
     app.include_router(categories.router)
     app.include_router(ingredients.router)
+    app.include_router(meal_plan.router)
     app.include_router(recipes.router)
     return app
 

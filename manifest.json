@@ -1,16 +1,18 @@
 {
   "name": "recipes",
   "version": "0.1.0",
-  "description": "Local recipe manager for Forger with structured ingredients, steps, categories, favorites, notes, images, and observed ingredient prices.",
+  "description": "Local recipe manager for Forger with structured ingredients, steps, categories, favorites, notes, images, observed ingredient prices, and a weekly menu.",
   "changelog": [
     {
       "version": "0.1.0",
       "summary": "Initial Recipes app.",
       "changes": [
+        "Browse recipes as a cookbook list, open recipe detail views, and edit from detail.",
         "Create, edit, search, favorite, rate, and delete recipes.",
-        "Manage structured ingredients and ordered preparation steps.",
+        "Manage structured ingredients with catalog autocomplete and fixed unit options.",
+        "Administer categories and ingredient catalog entries in dedicated tabs.",
         "Track ingredient price observations and estimate recipe cost per serving.",
-        "Organize recipes by category and attach an image reference."
+        "Organize recipes by category, attach an image reference, and build a weekly menu."
       ]
     }
   ],
@@ -32,8 +34,8 @@
   },
   "catalog": {
     "display_name": "Recipes",
-    "short_description": "A local cookbook with costs from observed ingredient prices.",
-    "description": "Recipes helps one person keep a local cookbook with structured ingredients, ordered steps, categories, favorites, personal notes, ratings, image references, and rough cost estimates from observed ingredient prices.",
+    "short_description": "A local cookbook with ingredient catalog, costs, and a weekly menu.",
+    "description": "Recipes helps one person keep a local cookbook with structured ingredients, ordered steps, categories, favorites, personal notes, ratings, image references, rough cost estimates from observed ingredient prices, and a weekly menu.",
     "category": "lifestyle",
     "permissions": ["app_data"],
     "supported_platforms": ["darwin_arm64", "darwin_x64"],
