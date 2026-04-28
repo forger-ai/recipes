@@ -1,0 +1,126 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, delete, select, update
+
+from app.database import get_session
+from app.models import Ingredient, IngredientPrice, RecipeIngredient, utcnow
+from app.schemas import (
+    IngredientBase,
+    IngredientPriceCreate,
+    IngredientPriceRead,
+    IngredientRead,
+)
+from app.services.pricing import cents_to_float, float_to_cents
+
+router = APIRouter(prefix="/api/ingredients", tags=["ingredients"])
+
+
+def _price_read(price: IngredientPrice) -> IngredientPriceRead:
+    return IngredientPriceRead(
+        id=price.id,
+        ingredient_id=price.ingredient_id,
+        price=cents_to_float(price.price_cents),
+        quantity=price.quantity,
+        unit=price.unit,
+        source=price.source,
+        observed_at=price.observed_at,
+    )
+
+
+def _ingredient_read(ingredient: Ingredient) -> IngredientRead:
+    return IngredientRead(
+        id=ingredient.id,
+        name=ingredient.name,
+        notes=ingredient.notes,
+    )
+
+
+@router.get("", response_model=list[IngredientRead])
+def list_ingredients(session: Session = Depends(get_session)) -> list[IngredientRead]:
+    ingredients = session.exec(select(Ingredient).order_by(Ingredient.name)).all()
+    return [_ingredient_read(ingredient) for ingredient in ingredients]
+
+
+@router.post("", response_model=IngredientRead)
+def create_ingredient(
+    payload: IngredientBase, session: Session = Depends(get_session)
+) -> IngredientRead:
+    ingredient = Ingredient(
+        name=payload.name.strip(),
+        notes=payload.notes,
+    )
+    session.add(ingredient)
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Ingredient already exists") from exc
+    session.refresh(ingredient)
+    return _ingredient_read(ingredient)
+
+
+@router.delete("/{ingredient_id}")
+def delete_ingredient(
+    ingredient_id: str, session: Session = Depends(get_session)
+) -> dict[str, str]:
+    ingredient = session.get(Ingredient, ingredient_id)
+    if not ingredient:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    session.exec(
+        update(RecipeIngredient)
+        .where(RecipeIngredient.ingredient_id == ingredient_id)
+        .values(ingredient_id=None)
+    )
+    session.exec(
+        delete(IngredientPrice).where(
+            IngredientPrice.ingredient_id == ingredient_id
+        )
+    )
+    session.delete(ingredient)
+    session.commit()
+    return {"status": "deleted"}
+
+
+@router.put("/{ingredient_id}", response_model=IngredientRead)
+def update_ingredient(
+    ingredient_id: str, payload: IngredientBase, session: Session = Depends(get_session)
+) -> IngredientRead:
+    ingredient = session.get(Ingredient, ingredient_id)
+    if not ingredient:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    ingredient.name = payload.name.strip()
+    ingredient.notes = payload.notes
+    ingredient.updated_at = utcnow()
+    session.add(ingredient)
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Ingredient already exists") from exc
+    session.refresh(ingredient)
+    return _ingredient_read(ingredient)
+
+
+@router.post("/{ingredient_id}/prices", response_model=IngredientPriceRead)
+def add_price(
+    ingredient_id: str,
+    payload: IngredientPriceCreate,
+    session: Session = Depends(get_session),
+) -> IngredientPriceRead:
+    ingredient = session.get(Ingredient, ingredient_id)
+    if not ingredient:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    price = IngredientPrice(
+        ingredient_id=ingredient_id,
+        price_cents=float_to_cents(payload.price),
+        quantity=payload.quantity,
+        unit=payload.unit,
+        source=payload.source,
+        observed_at=payload.observed_at or utcnow(),
+    )
+    session.add(price)
+    session.commit()
+    session.refresh(price)
+    return _price_read(price)
