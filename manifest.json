@@ -82,6 +82,17 @@
       "depends_on": ["backend"]
     }
   ],
+  "mcp": {
+    "type": "http",
+    "context": "./backend",
+    "command": "python -m app.mcp_server",
+    "healthcheck": "/health",
+    "environment": {
+      "DATABASE_URL": "sqlite:////app/data/recipes.sqlite",
+      "PYTHONPATH": "./src"
+    },
+    "toolTimeoutSec": 600
+  },
   "scripts": {
     "verify": "cd backend && uv run pytest && cd ../frontend && npm run verify"
   },
