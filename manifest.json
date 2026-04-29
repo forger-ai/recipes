@@ -1,8 +1,17 @@
 {
   "name": "recipes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local recipe manager for Forger with structured ingredients, steps, categories, favorites, notes, images, observed ingredient prices, and a weekly menu.",
   "changelog": [
+    {
+      "version": "0.1.1",
+      "summary": "Adds structured MCP tools for Forger agents.",
+      "changes": [
+        "Declares the Recipes MCP server in the app manifest.",
+        "Adds structured MCP tools for recipes, ingredients, and weekly planning.",
+        "Gives Forger agents a validated app interface for recipe data operations."
+      ]
+    },
     {
       "version": "0.1.0",
       "summary": "Initial Recipes app.",
