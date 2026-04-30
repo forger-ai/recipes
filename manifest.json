@@ -1,8 +1,16 @@
 {
   "name": "recipes",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Local recipe manager for Forger with structured ingredients, steps, categories, favorites, notes, images, observed ingredient prices, and a weekly menu.",
   "changelog": [
+    {
+      "version": "0.1.4",
+      "summary": "Improves FORGER Cloud release publishing diagnostics.",
+      "changes": [
+        "Adds a dedicated publisher user agent for FORGER Cloud release notifications.",
+        "Reports HTTP response details when automatic release publishing fails."
+      ]
+    },
     {
       "version": "0.1.3",
       "summary": "Publishes releases to FORGER Cloud and refreshes shared stack helpers.",
