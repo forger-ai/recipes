@@ -1,8 +1,16 @@
 {
   "name": "recipes",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Local recipe manager for Forger with structured ingredients, steps, categories, favorites, notes, images, observed ingredient prices, and a weekly menu.",
   "changelog": [
+    {
+      "version": "0.1.3",
+      "summary": "Publishes releases to FORGER Cloud and refreshes shared stack helpers.",
+      "changes": [
+        "Publishes release metadata directly to FORGER Cloud with a signed request.",
+        "Updates the shared commons submodule used by the app runtime."
+      ]
+    },
     {
       "version": "0.1.2",
       "summary": "Marks the app as beta in Forger catalog surfaces.",
